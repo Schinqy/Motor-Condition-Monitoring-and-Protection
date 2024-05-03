@@ -23,7 +23,9 @@ void motorProtection() {
     turnOffMotor();
     if (!overcurrentSent) {
       Serial.println("Overcurrent Protection Operated");
-      sendSMS(PHONE_NUMBER, "Overcurrent Protection Operated");
+      sendSMSx(PHONE_NUMBER, "Overcurrent Protection Operated");
+      displayError("Overcurrent Protection Operated");
+    
       overcurrentSent = true;
     }
   }
@@ -34,7 +36,7 @@ void motorProtection() {
     turnOffMotor();
     if (!overloadSent) {
       Serial.println("Overload Protection Operated");
-      sendSMS(PHONE_NUMBER, "Overload Protection Operated");
+      sendSMSx(PHONE_NUMBER, "Overload Protection Operated");
      overloadSent = true;
     }
   }
@@ -46,7 +48,7 @@ void motorProtection() {
   if (isUnbalancedVoltage(voltageR, voltageY, voltageB, averageVoltage)) {
     if (!unbalancedVoltageSent) {
       Serial.println("Unbalanced Suplies Protection Operated");
-      sendSMS(PHONE_NUMBER,"Unbalanced Suplies Protection Operated(Voltage)" );
+      sendSMSx(PHONE_NUMBER,"Unbalanced Suplies Protection Operated(Voltage)" );
       unbalancedVoltageSent = true;
     }
   }
@@ -59,7 +61,7 @@ void motorProtection() {
   if (isUnbalancedCurrent(currentR, currentY, currentB, averageCurrent)) {
     if (!unbalancedCurrentSent) {
       Serial.println("Unbalanced Supplies Protection Operated(Current)");
-      sendSMS(PHONE_NUMBER,"Unbalanced Supplies Protection Operated(Current)");
+      sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Protection Operated(Current)");
       unbalancedCurrentSent = true;
     }
   }
@@ -81,7 +83,7 @@ if (imbalancePercentage > 0.2 && currentB <1000) {
     //turnOffMotor();
     if (!unbalancedCurrentPos2Sent) {
       Serial.println("Unbalanced Supplies Operated : Current");
-      sendSMS(PHONE_NUMBER, "Unbalanced Supplies Operated : Current");
+      sendSMSx(PHONE_NUMBER, "Unbalanced Supplies Operated : Current");
       unbalancedCurrentPos2Sent = true;
     }
 } else if (imbalancePercentage < -0.2) {
@@ -89,7 +91,7 @@ if (imbalancePercentage > 0.2 && currentB <1000) {
     turnOffMotor();
     if (!unbalancedCurrentNeg2Sent) {
       Serial.println("Unbalanced Supplies Operated : Current ");
-      sendSMS(PHONE_NUMBER,"Unbalanced Supplies Operated : Current " );
+      sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Operated : Current " );
       unbalancedCurrentNeg2Sent = true;
     }
 }
@@ -102,8 +104,10 @@ if (voltageR > 1.1 * Vrated && voltageR < 1000 || voltageY > 1.1 * Vrated && vol
     turnOffMotor();
     if (!overVoltageSent) {
       Serial.println("Voltage Protection Operated : Over Voltage");
-      sendSMS(PHONE_NUMBER, "Voltage Protection Operated : Over Voltage");
+      sendSMSx(PHONE_NUMBER, "Voltage Protection Operated : Over Voltage");
       overVoltageSent= true;
+      displayError("Voltage Protection Operated : Over Voltage");
+      errorFlag = 1;
     }
 }
 //*********************^^^^^^^^^^^^^^^^^^^^^^^^^^*************************^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,8 +119,10 @@ if (voltageR < 0.9 * Vrated || voltageY < 0.9 * Vrated || voltageB < 0.9* Vrated
     turnOffMotor();
     if (!underVoltageSent) {
       Serial.println("Voltage Protection Operated : Under Voltage ");
-      sendSMS(PHONE_NUMBER, "Voltage Protection Operated : Under Voltage");
+      sendSMSx(PHONE_NUMBER, "Voltage Protection Operated : Under Voltage");
       underVoltageSent = true;
+       displayError("Voltage Protection Operated : Under Voltage");
+      errorFlag = 1;
     }
 }
 
@@ -127,8 +133,10 @@ if ((currentR == 0 || currentB == 0 ||currentB == 0)) {
      turnOffMotor();
     if (!singlePhasingSent) {
       Serial.println("Single Phasing Protection Operated");
-      sendSMS(PHONE_NUMBER, "Single Phasing Protection Operated");
+      sendSMSx(PHONE_NUMBER, "Single Phasing Protection Operated");
       singlePhasingSent = true;
+         displayError("Single Phasing Protection Operated");
+      errorFlag = 1;
     }
 }
 
@@ -138,8 +146,10 @@ if ((currentR == 0 || currentB == 0 ||currentB == 0)) {
     turnOffMotor();
     if (!overFrequencySent) {
       Serial.println("Frequency Protection Operated : Over Frequency");
-      sendSMS(PHONE_NUMBER,"Frequency Protection Operated : Over Frequency" );
+      sendSMSx(PHONE_NUMBER,"Frequency Protection Operated : Over Frequency" );
       overFrequencySent = true;
+         displayError("Frequency Protection Operated : Over Frequency");
+      errorFlag = 1;
     }
   }
 
@@ -147,8 +157,10 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
     turnOffMotor();
     if (!underFrequencySent) {
       Serial.println("Frequency Protection Operated : Under Frequency");
-      sendSMS(PHONE_NUMBER, "Frequency Protection Operated : Under Frequency");
+      sendSMSx(PHONE_NUMBER, "Frequency Protection Operated : Under Frequency");
       underFrequencySent= true;
+       displayError("Frequency Protection Operated : Under Frequency");
+      errorFlag = 1;
     }
   }
 
@@ -158,8 +170,10 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
     turnOffMotor();
     if (!highTemperatureSent) {
       Serial.println("Temperature Protection Operated");
-      sendSMS(PHONE_NUMBER, "Temperature Protection Operated");
+      sendSMSx(PHONE_NUMBER, "Temperature Protection Operated");
       highTemperatureSent = true;
+      displayError("Temperature Protection Operated");
+      errorFlag = 1;
     }
   }
 
@@ -170,7 +184,7 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
     turnOffMotor();
     if (!excessiveVibrationSent) {
       Serial.println("Vibration Protection Operarated");
-      sendSMS(PHONE_NUMBER, "Vibration Protection Operated ");
+      sendSMSx(PHONE_NUMBER, "Vibration Protection Operated ");
       excessiveVibrationSent= true;
     }
   }
@@ -181,7 +195,7 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
     turnOffMotor();
     if (!phaseSequenceFailureSent) {
       Serial.println("Phase Sequence Protection Operated");
-      sendSMS(PHONE_NUMBER, "Phase Sequence Protection Operated");
+      sendSMSx(PHONE_NUMBER, "Phase Sequence Protection Operated");
       phaseSequenceFailureSent = true;
     }
   }
@@ -191,7 +205,7 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
   if (BreakerStatusIndicatorVolatge > 100) {
     if (!breakerStatusSent) {
       Serial.println("BREAKER STATUS : CLOSE");
-      sendSMS(PHONE_NUMBER, "BREAKER STATUS : CLOSE");
+      sendSMSx(PHONE_NUMBER, "BREAKER STATUS : CLOSE");
       breakerStatusSent = true;
     }
   }

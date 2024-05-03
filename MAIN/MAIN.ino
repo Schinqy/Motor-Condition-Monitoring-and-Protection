@@ -6,11 +6,27 @@
 #include "EmonLib.h"  // Include Emon Library
 #include <PZEM004Tv30.h>
 
+#include <LiquidCrystal_I2C.h>
+#include <Bounce2.h>
+
+#define up_button 9
+#define down_button 10
+#define ok_button 11
+
+Bounce upButton = Bounce();
+Bounce downButton = Bounce();
+Bounce okButton = Bounce();
+
+LiquidCrystal_I2C lcd(0x27, 20, 4); // Initialize the LCD object with the I2C address and dimensions
 #include <SoftwareSerial.h>
 
-#define GSM_TX_PIN 10  // Connect GSM module TX to Arduino RX pin
-#define GSM_RX_PIN 11 // Connect GSM module RX to Arduino TX pin
-SoftwareSerial sim800Serial(10, 11); // RX, TX
+#define GSM_TX_PIN 3  // Connect GSM module TX to Arduino RX pin
+#define GSM_RX_PIN 2// Connect GSM module RX to Arduino TX pin
+SoftwareSerial sim800Serial(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
+
+int errorFlag = 0;
+
+
 
 unsigned long lastCommandTime = 0;
 unsigned long commandDelay = 1500;
@@ -24,7 +40,7 @@ bool excellentPrinted = false;
 String PHONE_NUMBER = "+263776432893";
 // Constants for RMS calculation
 #define NUM_SAMPLES 100     // Number of samples for RMS calculation
-#define RMS_THRESHOLD 0.4   // Threshold for significant vibration change in g(s)
+#define RMS_THRESHOLD 0.8   // Threshold for significant vibration change in g(s)
 
 // Arrays to store accelerometer readings
 float accelX[NUM_SAMPLES];
@@ -61,14 +77,14 @@ Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);  // Replace wi
 // Define pins for relay control
 const int relayPin = 28;  // Change to the appropriate pin
 
-const float I50set = 2.0;  // Set your overcurrent threshold (in amps)
-const float I51set = 2.0;
-const float Vrated = 230;
-const float Ir = 1.6;    // define the rated current
-const float Vset = 250.0;  // Set your overvoltage threshold (in volts)
-const float FrequencySet = 50;
-const float TemperatureSet = 10.0;  // Set maximum allowable temperature (in Celsius)
-const int AccelSet = 20;            // Set vibration threshold (adjust based on your sensor)
+float I50set = 2.0;  // Set your overcurrent threshold (in amps)
+float I51set = 2.0;
+float Vrated = 230;
+float Ir = 1.6;    // define the rated current
+float Vset = 250.0;  // Set your overvoltage threshold (in volts)
+float FrequencySet = 50;
+float TemperatureSet = 50.0;  // Set maximum allowable temperature (in Celsius)
+float AccelSet = 20;            // Set vibration threshold (adjust based on your sensor)
 
 double t = 10 * log(1.0 / (1.0 - pow(Ir / I51set, 2)));  //set delay time in secconds for overload i.e it should trip after time e
 unsigned int overloadThreshold = static_cast<unsigned int>(t * 1000);
@@ -107,6 +123,33 @@ float BreakerStatusIndicatorVolatge = 0;
 unsigned long prevMillis = 0; // Variable to store the last time SMS was sent
 const int SMSInterval = 10000; // Interval between SMS sending
 
+int selectedMenuItem = 0; // Index of the selected menu item
+
+// Define menu items
+const int NUM_MENU_ITEMS = 8;
+const String menuItems[NUM_MENU_ITEMS] = {
+  "I50thr",
+  "I51thr",
+  "Vr",
+  "Ir",
+  "V",
+  "Freq",
+  "Temp",
+  "Accel"
+};
+
+// Define corresponding parameter values
+float parameters[NUM_MENU_ITEMS] = {
+  2.0,  // I50 Threshold
+  2.0,  // I51 Threshold
+  230,  // V Rated
+  1.6,  // Ir
+  250.0,  // V Threshold
+  50,   // Frequency
+  10.0, // Temperature
+  1.00 // acceleration
+};
+
 
 void setup() {
   Serial.begin(9600);
@@ -125,16 +168,60 @@ void setup() {
   // Set ADXL345 range (options: RANGE_2_G, RANGE_4_G, RANGE_8_G, RANGE_16_G)
   accel.setRange(ADXL345_RANGE_16_G);
     calculateBaselineRMS();
+    lcd.init(); // Initialize the LCD
+  lcd.backlight(); // Turn on the backlight
 
-  sendSMS(PHONE_NUMBER, "SYSTEM ON");
+  pinMode(up_button, INPUT_PULLUP);
+  pinMode(down_button, INPUT_PULLUP);
+  pinMode(ok_button, INPUT_PULLUP);
+
+  upButton.attach(up_button);
+  downButton.attach(down_button);
+  okButton.attach(ok_button);
+
+  lcd.setCursor(0, 0);
+  lcd.print("Welcome");
+  delay(3000);
+  lcd.clear();
+   lcd.setCursor(0, 0);
+  lcd.print("Press OK to access"); 
+    lcd.setCursor(0, 1);
+  lcd.print("SETTINGS");
+ 
+
+
+  sendSMSx(PHONE_NUMBER, "SYSTEM ON");
 
   pinMode(relayPin, OUTPUT);    // Contactor / breaker control relay
   digitalWrite(relayPin, LOW);  //initialise relay pin status
 }
 
 void loop() {
-
-
+  if (errorFlag == 0) displayParameters();
+  okButton.update();
+ // Serial.println("OK Button" + String(okButton.fell()));
+ if (okButton.fell())
+  {
+  displayMenu();
+  do{
+    menuControl();
+   }
+  while(selectedMenuItem < NUM_MENU_ITEMS);
+  
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("All parameters saved");
+    delay(2000);
+    selectedMenuItem = 0;
+      I50set = parameters[0];
+      I51set = parameters[1];
+      Vrated = parameters[2];
+      Ir = parameters[3];
+      Vset = parameters[4];
+      FrequencySet = parameters[5];
+      TemperatureSet = parameters[6];
+      AccelSet = parameters[7];
+  }
   if (Serial.available()) {
   commandx = Serial.read();
   switch (commandx) {
@@ -193,6 +280,11 @@ void loop() {
     accelZ[i] = event.acceleration.z;
     delay(10); // Adjust delay based on sampling frequency
   }
+    sensors_event_t events;
+    accel.getEvent(&events);
+  accelXx = events.acceleration.x;
+  accelYy = events.acceleration.y;
+  accelZz = events.acceleration.z;
 
   // Calculate RMS values for each axis
   rmsX = calculateRMS(accelX, NUM_SAMPLES);
@@ -213,6 +305,8 @@ void loop() {
 
   PhaseFailureIndicatorVolatge = emon1.Vrms;   // Extract Vrms into Variable
   BreakerStatusIndicatorVolatge = emon2.Vrms;  // Extract Vrms into Variable
+
+
 
   // NEED TO MODIFY CODE TO READ BOTH A0 AND A1
 
@@ -248,12 +342,12 @@ void loop() {
       float voltageReading = voltageB; // I dont know what to put here, i assume Vrms
       accelerationReading = calculateAccelerationChange(accelXx, accelYy, accelZz,baselineRMS_X, baselineRMS_Y, baselineRMS_Z);
 
-    float overallCondition = calculateOverallCondition(accelerationReading, temperatureReading, currentReading, voltageReading);
+    //float overallCondition = calculateOverallCondition(accelerationReading, temperatureReading, currentReading, voltageReading);
 
-    Serial.println("Condition Score : " + String(overallCondition,2));
-
+    //Serial.println("Condition Score : " + String(overallCondition,2));
+    Serial.println("Acceleration: " + String(accelerationReading,2));
   // printConditionAndSendSMS(overallCondition);
-   sendSMSEveryXMilliseconds(SMSInterval);
+   //sendSMSEveryXMilliseconds(SMSInterval);
 
   // Call the motor protection function
   if (count > 0) {

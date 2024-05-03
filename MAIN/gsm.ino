@@ -4,10 +4,11 @@ void sendCommand(const String& command, int expectedOrder) {
   if (orderNum == expectedOrder && millis() - lastCommandTime >= commandDelay) {
     sim800Serial.println(command);
     Serial.println(command);
-    while (sim800Serial.available()) {
+    if (sim800Serial.available()) {
       String response = sim800Serial.readString();
-      Serial.println(response);
+      Serial.println("GSM say:" + response);
     }
+    
     lastCommandTime = millis();
     orderNum++;
     if (orderNum > 3) {
@@ -65,5 +66,43 @@ void sendSMSEveryXMilliseconds(int XMilliseconds) {
                   
     // Send the SMS
     sendSMS(PHONE_NUMBER, SMString);
+  }
+}
+
+
+
+//*********************************Send  SMS with blocking delay*************************
+
+void sendCommandx(const String& command)
+{
+  sim800Serial.println(command);
+  delay(1000);
+
+  if (sim800Serial.available())
+  {
+    String response = sim800Serial.readString();
+    Serial.println(response);
+  }
+}
+ 
+
+void sendSMSx(const String& phoneNumber, const String& message)
+{
+  sendCommandx("AT+CMGF=1"); // Set SMS mode to text
+  delay(1000);
+
+  sendCommandx("AT+CMGS=\"" + phoneNumber + "\"");
+  delay(1000);
+
+  sim800Serial.print(message);
+  delay(100);
+
+  sim800Serial.write(26); // Ctrl+Z to send the message
+  delay(1000);
+
+  if (sim800Serial.available())
+  {
+    String response = sim800Serial.readString();
+    Serial.println(response);
   }
 }
