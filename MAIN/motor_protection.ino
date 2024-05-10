@@ -27,6 +27,7 @@ void motorProtection() {
       displayError("Overcurrent Protection Operated");
     
       overcurrentSent = true;
+      errorFlag = 1;
     }
   }
 //*********************^^^^^^^^^^^^^^^^^^^^^^^^^^*************************^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,6 +39,8 @@ void motorProtection() {
       Serial.println("Overload Protection Operated");
       sendSMSx(PHONE_NUMBER, "Overload Protection Operated");
      overloadSent = true;
+     displayError("Overload Protection Operated");
+     errorFlag = 1;
     }
   }
 
@@ -47,9 +50,11 @@ void motorProtection() {
   // Check if unbalanced voltage is detected
   if (isUnbalancedVoltage(voltageR, voltageY, voltageB, averageVoltage)) {
     if (!unbalancedVoltageSent) {
-      Serial.println("Unbalanced Suplies Protection Operated");
-      sendSMSx(PHONE_NUMBER,"Unbalanced Suplies Protection Operated(Voltage)" );
+      Serial.println("Unbalanced Supplies Protection Operated");
+      sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Protection Operated(Voltage)" );
       unbalancedVoltageSent = true;
+      displayError("Unbalanced Supplies Protection Operated(Voltage)");
+      errorFlag = 1;
     }
   }
 
@@ -63,6 +68,8 @@ void motorProtection() {
       Serial.println("Unbalanced Supplies Protection Operated(Current)");
       sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Protection Operated(Current)");
       unbalancedCurrentSent = true;
+      displayError("Unbalanced Supplies Protection Operated(Current)");
+      errorFlag = 1;
     }
   }
 //*********************^^^^^^^^^^^^^^^^^^^^^^^^^^*************************^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,16 +90,20 @@ if (imbalancePercentage > 0.2 && currentB <1000) {
     //turnOffMotor();
     if (!unbalancedCurrentPos2Sent) {
       Serial.println("Unbalanced Supplies Operated : Current");
-      sendSMSx(PHONE_NUMBER, "Unbalanced Supplies Operated : Current");
+      sendSMSx(PHONE_NUMBER, "Unbalanced Supplies Operated : +ve Current");
       unbalancedCurrentPos2Sent = true;
+      displayError("Unbalanced Supplies Operated : +ve Current");
+      errorFlag = 1;
     }
 } else if (imbalancePercentage < -0.2) {
     // Turn off the motor
     turnOffMotor();
     if (!unbalancedCurrentNeg2Sent) {
       Serial.println("Unbalanced Supplies Operated : Current ");
-      sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Operated : Current " );
+      sendSMSx(PHONE_NUMBER,"Unbalanced Supplies Operated : -ve Current" );
       unbalancedCurrentNeg2Sent = true;
+      displayError("Unbalanced Supplies Operated : -ve Current");
+      errorFlag = 1;
     }
 }
 //*********************^^^^^^^^^^^^^^^^^^^^^^^^^^*************************^^^^^^^^^^^^^^^^^^^^^^^
@@ -186,6 +197,8 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
       Serial.println("Vibration Protection Operarated");
       sendSMSx(PHONE_NUMBER, "Vibration Protection Operated ");
       excessiveVibrationSent= true;
+      displayError("Vibration Protection Operated");
+      errorFlag = 1;
     }
   }
 
@@ -197,6 +210,7 @@ if (frequencyR < 0.9 * FrequencySet && frequencyR < 1000){
       Serial.println("Phase Sequence Protection Operated");
       sendSMSx(PHONE_NUMBER, "Phase Sequence Protection Operated");
       phaseSequenceFailureSent = true;
+     
     }
   }
 

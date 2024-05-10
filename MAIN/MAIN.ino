@@ -12,10 +12,14 @@
 #define up_button 9
 #define down_button 10
 #define ok_button 11
+#define on_button 12
+#define off_button 13
 
 Bounce upButton = Bounce();
 Bounce downButton = Bounce();
 Bounce okButton = Bounce();
+Bounce onButton = Bounce();
+Bounce offButton = Bounce();
 
 LiquidCrystal_I2C lcd(0x27, 20, 4); // Initialize the LCD object with the I2C address and dimensions
 #include <SoftwareSerial.h>
@@ -25,6 +29,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4); // Initialize the LCD object with the I2C ad
 SoftwareSerial sim800Serial(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
 
 int errorFlag = 0;
+int onFlag = 0;
 
 
 
@@ -40,7 +45,7 @@ bool excellentPrinted = false;
 String PHONE_NUMBER = "+263776432893";
 // Constants for RMS calculation
 #define NUM_SAMPLES 100     // Number of samples for RMS calculation
-#define RMS_THRESHOLD 0.8   // Threshold for significant vibration change in g(s)
+float RMS_THRESHOLD = 0.8;   // Threshold for significant vibration change in g(s)
 
 // Arrays to store accelerometer readings
 float accelX[NUM_SAMPLES];
@@ -84,7 +89,7 @@ float Ir = 1.6;    // define the rated current
 float Vset = 250.0;  // Set your overvoltage threshold (in volts)
 float FrequencySet = 50;
 float TemperatureSet = 50.0;  // Set maximum allowable temperature (in Celsius)
-float AccelSet = 20;            // Set vibration threshold (adjust based on your sensor)
+float AccelSet = 20;            // Refer to RMS_THRESHOLD for vibration threshold. Its defined above
 
 double t = 10 * log(1.0 / (1.0 - pow(Ir / I51set, 2)));  //set delay time in secconds for overload i.e it should trip after time e
 unsigned int overloadThreshold = static_cast<unsigned int>(t * 1000);
@@ -146,8 +151,8 @@ float parameters[NUM_MENU_ITEMS] = {
   1.6,  // Ir
   250.0,  // V Threshold
   50,   // Frequency
-  10.0, // Temperature
-  1.00 // acceleration
+  50.0, // Temperature
+  0.8 // acceleration
 };
 
 
@@ -174,10 +179,14 @@ void setup() {
   pinMode(up_button, INPUT_PULLUP);
   pinMode(down_button, INPUT_PULLUP);
   pinMode(ok_button, INPUT_PULLUP);
+  pinMode(on_button, INPUT_PULLUP);
+  pinMode(off_button, INPUT_PULLUP);
 
   upButton.attach(up_button);
   downButton.attach(down_button);
   okButton.attach(ok_button);
+  onButton.attach(on_button);
+  offButton.attach(off_button);
 
   lcd.setCursor(0, 0);
   lcd.print("Welcome");
@@ -199,7 +208,25 @@ void setup() {
 void loop() {
   if (errorFlag == 0) displayParameters();
   okButton.update();
+  onButton.update();
+  offButton.update();
+
  // Serial.println("OK Button" + String(okButton.fell()));
+ //********************On Button**********************************
+   if (onButton.fell())
+   {
+    onFlag = 1;
+   // offFlag = 0;
+   }
+
+//********************Off Button**********************************
+   if (offButton.fell())
+   {
+    onFlag = 0;
+   // offFlag = 1;
+   }
+
+//********************Settings Button**********************************
  if (okButton.fell())
   {
   displayMenu();
@@ -220,11 +247,13 @@ void loop() {
       Vset = parameters[4];
       FrequencySet = parameters[5];
       TemperatureSet = parameters[6];
-      AccelSet = parameters[7];
+      RMS_THRESHOLD = parameters[7];
   }
-  if (Serial.available()) {
-  commandx = Serial.read();
-  switch (commandx) {
+
+//********************Motor Operation and Protection **********************************
+  // if (Serial.available()) {
+  // commandx = Serial.read();
+  switch (onFlag) {
     case '1':
       // Turn the relay ON
       count = 1;
@@ -237,13 +266,9 @@ void loop() {
       digitalWrite(relayPin, LOW);
       Serial.println("Relay turned OFF.");
       break;
-    default:
-
-      if (count == 0) Serial.println("Invalid command. Use '1' to turn ON or '0' to turn OFF.");
-
-      break;
+    
   }
-  }
+  //}
 
   // Read data from PZEM1
 
@@ -332,7 +357,7 @@ void loop() {
     Serial.print("PhaseFailureIndicatorVoltage: ");
     Serial.println(PhaseFailureIndicatorVolatge);  // Print Voltage
 
-    Serial.print("BreakerStatusIndicatorVolatge: ");
+    Serial.print("BreakerStatusIndicatorVoltage: ");
     Serial.println(BreakerStatusIndicatorVolatge);  // Print Voltage
     //Contactor /Breaker control relay
     // Check for commands from the serial monitor
@@ -347,19 +372,19 @@ void loop() {
     //Serial.println("Condition Score : " + String(overallCondition,2));
     Serial.println("Acceleration: " + String(accelerationReading,2));
   // printConditionAndSendSMS(overallCondition);
-   //sendSMSEveryXMilliseconds(SMSInterval);
+  sendSMSEveryXMilliseconds(SMSInterval);
 
-  // Call the motor protection function
-  if (count > 0) {
+  // // Call the motor protection function
+  // if (count > 0) {
 
-    if (count2 == 0) {
-      Serial.println("reading Values");
-      delay(1);
-    }
-    count2++;
+  //   if (count2 == 0) {
+  //     Serial.println("reading Values");
+  //     delay(1);
+  //   }
+  //   count2++;
 
 
-  }
+  // }
 
 
 
@@ -375,7 +400,7 @@ void turnOffMotor() {
   digitalWrite(relayPin, LOW);  // Turn off the relay
 }
 void turnOnMotor() {
-  digitalWrite(relayPin, HIGH);  // Turn off the relay
+  digitalWrite(relayPin, HIGH);  // Turn on the relay
 }
 
 float calculateAccelerationModulus(float accX, float accY, float accZ) {
